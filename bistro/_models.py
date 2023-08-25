@@ -36,7 +36,7 @@ class OverflowTimestampError(OverflowError):
 
 @dataclasses.dataclass(frozen=True, kw_only=True, slots=True, weakref_slot=True)
 class UserSubscription:
-    """Represents a data subscription that user has subscribed.
+    """Represents a data subscription that :class:`User` has subscribed.
 
     :class:`UserSubscription` encapsulates partial data subscription details, indicating the specific information to
     which a :class:`User` has already subscribed. It provides information about the subscription's ID, price, name, and
@@ -70,7 +70,10 @@ class UserSubscription:
                                     32-bit integer.
 
     :note:
-        The `profile_id` might not be the same as the user's ID. More documentation needed.
+        - The `profile_id` might not be the same as the user's ID. More documentation needed.
+        - This class is intended to be used as an immutable data container, hence the frozen attribute.
+        - The slots attribute is enabled to optimize memory usage.
+        - The weakref_slot attribute is enabled to allow weak references to be created.
 
     :warning:
         Be aware of potential timestamp overflow issues when working with extremely large timestamps.
