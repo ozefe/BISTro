@@ -48,7 +48,7 @@ class UserSubscription:
     :param str subcategory_code: The subcategory code of the subscription.
     :param int product_type_id: The product type ID of the subscription.
     :param int profile_id: The profile ID associated with the subscription.
-    :param str name: The name of the subscription.
+    :param str name: The Turkish name of the subscription.
     :param str name_en: The English name of the subscription.
     :param int created_timestamp: The UNIX timestamp of subscription creation in milliseconds
                                      (1'000 milliseconds = 1 second).
