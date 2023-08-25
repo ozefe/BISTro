@@ -27,10 +27,14 @@ import datetime
 
 
 class InvalidTimestampError(ValueError):
-    """Custom exception raised for invalid timestamp conversion."""
+    """Raised for invalid timestamp conversion."""
 
 
-@dataclasses.dataclass(frozen=True, slots=True, weakref_slot=True)
+class OverflowTimestampError(OverflowError):
+    """Raised for converting timestamps bigger than signed 32-bit integer to :class:`datetime.datetime` objects"""
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True, slots=True, weakref_slot=True)
 class UserSubscription:
     """Represents a data subscription that user has subscribed.
 
@@ -55,13 +59,15 @@ class UserSubscription:
     :param int expiration_timestamp: The UNIX timestamp of subscription expiration in milliseconds
                                      (1'000 milliseconds = 1 second) or in microseconds
                                      (1'000'000 microseconds = 1 second).
-    :param str created_date_text: The creation date of the subscription in the ``DD.MM.YYYY`` format.
-    :param str expiration_date_text: The expiration date of the subscription in the ``DD.MM.YYYY`` format.
+    :param str created_date_text: The creation date of the subscription in the `DD.MM.YYYY` format.
+    :param str expiration_date_text: The expiration date of the subscription in the `DD.MM.YYYY` format.
 
     :ivar datetime.datetime created_datetime: The creation date and time of the subscription (calculated).
     :ivar datetime.datetime expiration_datetime: The expiration date and time of the subscription (calculated).
 
     :raises InvalidTimestampError: If any provided timestamp is not convertible to a valid datetime.
+    :raises OverflowTimestampError: If provided timestamp for `UserSubscription.created_datetime` is bigger than signed
+                                    32-bit integer.
 
     :note:
         The `profile_id` might not be the same as the user's ID. More documentation needed.
@@ -104,10 +110,10 @@ class UserSubscription:
     profile_id: int
     name: str
     name_en: str
-    created_timestamp: int
-    expiration_timestamp: int
-    created_date_text: str
-    expiration_date_text: str
+    created_timestamp: int = dataclasses.field(repr=False)
+    expiration_timestamp: int = dataclasses.field(repr=False)
+    created_date_text: str = dataclasses.field(repr=False)
+    expiration_date_text: str = dataclasses.field(repr=False)
     created_datetime: datetime.datetime = dataclasses.field(init=False)
     expiration_datetime: datetime.datetime = dataclasses.field(init=False)
 
@@ -132,8 +138,8 @@ class UserSubscription:
         except ValueError as tb:
             raise InvalidTimestampError('Invalid timestamp provided.') from tb
         except OverflowError as tb:
-            raise InvalidTimestampError('Provided timestamp is too big for conversion to `datetime.datetime`'
-                                        'object.') from tb
+            raise OverflowTimestampError('Provided timestamp is too big for conversion to `datetime.datetime`'
+                                         'object.') from tb
         except OSError as tb:
             raise InvalidTimestampError('Encountered an error while trying to convert provided timestamp to '
                                         '`datetime.datetime` object.') from tb
