@@ -157,3 +157,77 @@ class UserSubscription:
                                datetime.datetime.fromtimestamp(2 ** 31 - 1))
         except ValueError as tb:
             raise InvalidTimestampError('Invalid timestamp provided.') from tb
+
+
+@dataclasses.dataclass(frozen=True, slots=True, weakref_slot=True)
+class User:
+    """Represents a user object.
+
+    :class:`User` holds various information about a user, including their identification, username, email, and various
+    settings.
+
+    :param int id: The unique identifier of the user.
+    :param str username: The username of the user.
+    :param str email: The email address associated with the user.
+    :param bool email_confirmed: A flag indicating whether the user's email has been confirmed.
+    :param bool password_change_required: A flag indicating whether a password change is required for the user.
+    :param bool endeks_notification_read: A flag indicating whether the user has read the Endeks notification, which is:
+                                          27.07.2020 tarihinden itibaren (ve bu tarih dahil olmak üzere) TL cinsi BIST
+                                          Pay Endekslerinden ve Müşteri Endekslerinden iki sıfır atılmıştır. Bu tarihten
+                                          önceki dosyalardaki endeks değerlerinin 100’e bölünerek ve bölen değerlerinin
+                                          100’le çarpılarak kullanılması gerekmektedir. Ayrıca endekslerden sıfır
+                                          atılması sonucu VİOP’ta işlem gören endeks vadeli işlem ve opsiyon
+                                          sözleşmelerinde de değişiklikler yapılmıştır. 27.07.2020 tarihinden önceki
+                                          VİOP dosyaları kullanılırken bu hususun dikkate alınması gerekmektedir. Bahsi
+                                          geçen hususlarda Borsa İstanbul’un herhangi bir sorumluluğu bulunmamaktadır.
+    :param str state: The state or status of the user.
+    :param str family_name: The family name of the user. (Optional)
+    :param list[UserSubscription] subscriptions: A list of :class:`UserSubscription` instances representing the user's
+                                                 subscriptions. (Optional)
+
+    :note:
+        - This class is intended to be used as an immutable data container, hence the frozen attribute.
+        - The slots attribute is enabled to optimize memory usage.
+        - The weakref_slot attribute is enabled to allow weak references to be created.
+        - Make sure to import the necessary modules (e.g., UserSubscription) before creating instances.
+
+    :warning:
+        Ensure that you have defined the :class:`UserSubscription` class before initializing :class:`User` instances
+        with subscriptions.
+
+    :example:
+        Creating a :class:`User` instance:
+
+        >>> subscription1 = UserSubscription(...)  # Initialize a UserSubscription instance
+        >>> subscription2 = UserSubscription(...)  # Initialize another UserSubscription instance
+        >>> user = User(
+        ...     id=1,
+        ...     username="johndoe",
+        ...     email="johndoe@example.com",
+        ...     email_confirmed=True,
+        ...     password_change_required=False,
+        ...     endeks_notification_read=True,
+        ...     state="ACTIVE",
+        ...     family_name="Doe",
+        ...     subscriptions=[subscription1, subscription2]
+        ... )
+    """
+
+    # TODO: Clarify the purpose of the `password_change_required` flag. It appears to be related to password expiration
+    #  and periodic changes, but the exact mechanism and interval are currently unknown. Further investigation is needed
+
+    # TODO: Currently, there's no information available about the API call for changing the `family_name`, which is
+    #  intriguing given that `family_name` is set to `None` by default.
+
+    # TODO: Presently, the only recognized `state` value is `ACTIVE`. A more thorough investigation is needed to provide
+    #  comprehensive documentation on possible `state` values.
+
+    id: int
+    username: str
+    email: str
+    email_confirmed: bool
+    password_change_required: bool
+    endeks_notification_read: bool
+    state: str
+    family_name: str = None
+    subscriptions: list[UserSubscription] = dataclasses.field(default_factory=list)
