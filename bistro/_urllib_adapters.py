@@ -22,3 +22,39 @@ TODO: Module documentation.
 :copyright: (C) 2023 by Efe Özyay.
 :license: GNU General Public License 3.0, see LICENSE for more details.
 """
+import urllib.request
+import http.cookiejar
+import os
+
+
+class Session:
+    def __init__(self, cookies: list[http.cookiejar.Cookie] | str = None, proxies: dict[str, str] = None):
+        self.opener = urllib.request.build_opener()
+
+        self.opener.addheaders = [
+            ('User-Agent',
+             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 '
+             'Safari/537.36')
+        ]
+
+        if proxies:
+            self.opener.add_handler(urllib.request.ProxyHandler(proxies))
+
+        if isinstance(cookies, list):
+            self.cookie_jar = http.cookiejar.CookieJar()
+            for cookie in cookies:
+                self.cookie_jar.set_cookie(cookie)
+        elif isinstance(cookies, os.PathLike):
+            self.cookie_jar = http.cookiejar.LWPCookieJar(cookies)
+            try:
+                self.cookie_jar.load()
+            except FileNotFoundError as e:
+                raise e
+
+        self.opener.add_handler(urllib.request.HTTPCookieProcessor(self.cookie_jar))
+
+    def open(self, request: urllib.request.Request):
+        raise NotImplementedError
+
+    def download(self, request: urllib.request.Request, file_path: os.PathLike):
+        raise NotImplementedError
