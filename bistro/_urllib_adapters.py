@@ -22,8 +22,8 @@ TODO: Module documentation.
 :copyright: (C) 2023 by Efe Özyay.
 :license: GNU General Public License 3.0, see LICENSE for more details.
 """
-import urllib.error
 import urllib.request
+import urllib.error
 import http.cookiejar
 import http.client
 import os
@@ -38,7 +38,7 @@ class CookieFileLoadError(http.cookiejar.LoadError):
 
 
 class DownloadError(Exception):
-    """Raised for errors generated when trying to download a file"""
+    """Raised for download-related errors."""
 
 
 class Session:
@@ -72,39 +72,83 @@ class Session:
     def open(self, request: urllib.request.Request) -> http.client.HTTPResponse:
         return self.opener.open(request)
 
-    def download(self, request: urllib.request.Request, file_path: os.PathLike, file_size: int = None, max_retries: int = 3) -> tuple[int, os.PathLike]:
+    def download(self, request: urllib.request.Request, file_path: os.PathLike, expected_file_size: int = None,
+                 max_retries: int = 3) -> tuple[int, os.PathLike]:
+        """Downloads a file from a given URL using the provided :class:`urllib.request.Request` and saves it to the
+        specified ``file_path``.
+
+        :param urllib.request.Request request: An object containing the URL and headers for the download.
+        :param os.PathLike file_path: The file path where the downloaded file will be saved.
+        :param int expected_file_size: The expected size of the file in bytes, if known. Defaults to None.
+        :param int max_retries: Maximum number of retries in case of download failures. Defaults to 3.
+
+        :return: A tuple containing two values:
+                 1. The actual size of the downloaded file in bytes.
+                 2. The file path where the downloaded content has been saved.
+        :rtype: tuple[int, os.PathLike]
+
+        :raises DownloadError: If any of these errors occur during the download process:
+                               1. If there are connection-related errors, such as :class:`urllib.error.URLError`.
+                               2. If the provided `request` object is invalid or if there are data processing errors,
+                                  i.e., :class:`ValueError`, :class:`TypeError`.
+                               3. If there are file system errors during file operations, i.e. :class:`PermissionError`.
+                               4. If there are unexpected errors that cannot be categorized.
+
+        :note:
+            - The ``download()`` method employs ``self.open()`` to handle requests, which is analogous to the behavior
+              in ``self.open()``. Consequently, any supplementary arguments included in the request (such as cookies or
+              headers) will supersede the default ``Session`` parameters. This circumstance bears the potential of
+              giving rise to unanticipated errors that lack proper documentation.
+
+        :warning:
+            - Ensure that the provided `file_path` specifies a valid and writable file path in the filesystem.
+
+        :example:
+            >>> import pathlib
+            >>> session = Session()
+            >>> try:
+            ...     downloaded_size, downloaded_path = session.download(
+            ...         urllib.request.Request('https://httpbin.org/image/jpeg'),
+            ...         pathlib.Path('./wolf.jpeg')
+            ...     )
+            ...     print(f'Download successful. File size: {downloaded_size} bytes. Saved at: {downloaded_path}')
+            ... except DownloadError as e:
+            ...     print(f'Error occurred during download: {e}')
+        """
+
+        # TODO: We need a proper internal logging utility to make actual error handling and monitoring possible.
+
         retries = 0
         while retries <= max_retries:
             try:
                 with open(file_path, 'wb') as file, self.open(request) as response:
-                    downloaded_size = 0
-                    while chunk := response.read(1024):
+                    downloaded_bytes = 0
+
+                    # Reading and writing 1MB (1024B * 1024B = 1MB) chunks each time to prevent memory overflow.
+                    while chunk := response.read(1024 * 1024):
                         file.write(chunk)
-                        downloaded_size += len(chunk)
+                        downloaded_bytes += len(chunk)
 
-                if not file_size:
-                    file_size = int(response.getheader('Content-Length', 0))
-                if downloaded_size < file_size and file_size > 0:
-                    print(f'{downloaded_size=} {response.length=}')
-                    raise DownloadError('Download malformed.')
+                if not expected_file_size:
+                    expected_file_size = int(response.getheader('Content-Length', 0))
 
-                return file_size, file_path
-            # self.open exception
+                # If the ``expected_file_size`` was absent and the response lacked a ``Content-Length`` header, we
+                # encounter a situation where it becomes impossible to determine the integrity of the downloaded file.
+                # Consequently, we are compelled to assume that the file is not corrupted due to the absence of relevant
+                # information.
+                if downloaded_bytes < expected_file_size and expected_file_size > 0:
+                    raise DownloadError('Downloaded data is incomplete or malformed.')
+
+                return expected_file_size, file_path
             except (urllib.error.URLError, http.client.HTTPException, ConnectionError) as tb:
-                # raise DownloadError(f'Error trying to connect to the host: {request}') from tb
-                pass
+                raise DownloadError(f'Error connecting to the host: {request}') from tb
             except (ValueError, TypeError) as tb:
-                # raise DownloadError(f'Data processing error occurred, provided Request object could be malformed: {request}') from tb
-                pass
-            # file open error
+                raise DownloadError(f'Error processing data or malformed request: {request}') from tb
             except OSError as tb:
-                # raise DownloadError(f'File system error occurred while trying to work with the provided file: {file_path}') from tb
-                pass
-            # catch-all
+                raise DownloadError(f'File system error while working with the file: {file_path}') from tb
             except Exception as tb:
                 raise DownloadError(f'Unknown error encountered: {request}') from tb
             finally:
-                print(f'Retries so far for {request=} and {file_path=}: {retries}')
                 retries += 1
 
-        raise DownloadError(f'{max_retries=} reached for {request=} and {file_path=}')
+        raise DownloadError(f'{max_retries=} reached for {request.get_full_url()=} and {file_path=}')
