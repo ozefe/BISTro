@@ -78,6 +78,9 @@ class UserSubscription:
     .. warning::
         - Be aware of potential timestamp overflow issues when working with extremely large timestamps.
 
+    .. seealso:: :class:`datetime.datetime`, :class:`InvalidTimestampError`, :class:`OverflowTimestampError`,
+                 :class:`User`
+
     :Example:
         Creating a :class:`UserSubscription` instance:
 
@@ -194,6 +197,8 @@ class User:
     .. warning::
         - Ensure that you have defined the :class:`UserSubscription` class before initializing :class:`User` instances
           with subscriptions.
+
+    .. seealso:: :class:`UserSubscription`
 
     :Example:
         Creating a :class:`User` instance:
