@@ -75,12 +75,12 @@ class Session:
     def download(self, request: urllib.request.Request, file_path: os.PathLike, expected_file_size: int = None,
                  max_retries: int = 3) -> tuple[int, os.PathLike]:
         """Downloads a file from a given URL using the provided :class:`urllib.request.Request` and saves it to the
-        specified ``file_path``.
+        specified `file_path`.
 
         :param urllib.request.Request request: An object containing the URL and headers for the download.
         :param os.PathLike file_path: The file path where the downloaded file will be saved.
-        :param int expected_file_size: The expected size of the file in bytes, if known. Defaults to None.
-        :param int max_retries: Maximum number of retries in case of download failures. Defaults to 3.
+        :param int expected_file_size: The expected size of the file in bytes, if known. Defaults to `None`.
+        :param int max_retries: Maximum number of retries in case of download failures. Defaults to `3`.
 
         :return: A tuple containing two values:
                  1. The actual size of the downloaded file in bytes.
@@ -94,16 +94,18 @@ class Session:
                                3. If there are file system errors during file operations, i.e. :class:`PermissionError`.
                                4. If there are unexpected errors that cannot be categorized.
 
-        :note:
-            - The ``download()`` method employs ``self.open()`` to handle requests, which is analogous to the behavior
-              in ``self.open()``. Consequently, any supplementary arguments included in the request (such as cookies or
-              headers) will supersede the default ``Session`` parameters. This circumstance bears the potential of
-              giving rise to unanticipated errors that lack proper documentation.
+        .. note::
+            - The `Session.download()` employs `Session.open()` to handle requests. Consequently, any supplementary
+              arguments included in the request (such as cookies or headers) will supersede the default :class:`Session`
+              parameters. This circumstance bears the potential of giving rise to unanticipated errors that lack proper
+              documentation.
 
-        :warning:
+        .. warning::
             - Ensure that the provided `file_path` specifies a valid and writable file path in the filesystem.
 
-        :example:
+        :Example:
+            Downloading an image file:
+
             >>> import pathlib
             >>> session = Session()
             >>> try:
@@ -132,8 +134,8 @@ class Session:
                 if not expected_file_size:
                     expected_file_size = int(response.getheader('Content-Length', 0))
 
-                # If the ``expected_file_size`` was absent and the response lacked a ``Content-Length`` header, we
-                # encounter a situation where it becomes impossible to determine the integrity of the downloaded file.
+                # If the `expected_file_size` was absent and the response lacked a `Content-Length` header, we encounter
+                # a situation where it becomes impossible to determine the integrity of the downloaded file.
                 # Consequently, we are compelled to assume that the file is not corrupted due to the absence of relevant
                 # information.
                 if downloaded_bytes < expected_file_size and expected_file_size > 0:
