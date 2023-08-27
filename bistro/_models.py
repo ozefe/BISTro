@@ -55,10 +55,10 @@ class UserSubscription:
     :param str name: The Turkish name of the subscription.
     :param str name_en: The English name of the subscription.
     :param int created_timestamp: The UNIX timestamp of subscription creation in milliseconds
-                                     (1'000 milliseconds = 1 second).
+                                  (``1'000 milliseconds = 1 second``).
     :param int expiration_timestamp: The UNIX timestamp of subscription expiration in milliseconds
-                                     (1'000 milliseconds = 1 second) or in microseconds
-                                     (1'000'000 microseconds = 1 second).
+                                     (``1'000 milliseconds = 1 second``) or in microseconds
+                                     (``1'000'000 microseconds = 1 second``).
     :param str created_date_text: The creation date of the subscription in the `DD.MM.YYYY` format.
     :param str expiration_date_text: The expiration date of the subscription in the `DD.MM.YYYY` format.
 
@@ -69,16 +69,16 @@ class UserSubscription:
     :raises OverflowTimestampError: If provided timestamp for `UserSubscription.created_datetime` is bigger than signed
                                     32-bit integer.
 
-    :note:
+    .. note::
+        - This class is intended to be used as an immutable data container, hence the `frozen` attribute.
+        - The `slots` attribute is enabled to optimize memory usage.
+        - The `weakref_slot` attribute is enabled to allow weak references to be created.
         - The `profile_id` might not be the same as the user's ID. More documentation needed.
-        - This class is intended to be used as an immutable data container, hence the frozen attribute.
-        - The slots attribute is enabled to optimize memory usage.
-        - The weakref_slot attribute is enabled to allow weak references to be created.
 
-    :warning:
-        Be aware of potential timestamp overflow issues when working with extremely large timestamps.
+    .. warning::
+        - Be aware of potential timestamp overflow issues when working with extremely large timestamps.
 
-    :example:
+    :Example:
         Creating a :class:`UserSubscription` instance:
 
         >>> subscription = UserSubscription(
@@ -99,7 +99,7 @@ class UserSubscription:
         2022-08-25 00:00:00
     """
 
-    # TODO: `UserSubscription`.profile_id is not the same as `User`.id and I have no idea why. It seems the difference
+    # TODO: `UserSubscription.profile_id` is not the same as `User.id` and I have no idea why. It seems the difference
     #  between two of these IDs is 920. Write a more comprehensive documentation for this attribute.
 
     id: int
@@ -172,30 +172,30 @@ class User:
     :param bool email_confirmed: A flag indicating whether the user's email has been confirmed.
     :param bool password_change_required: A flag indicating whether a password change is required for the user.
     :param bool endeks_notification_read: A flag indicating whether the user has read the Endeks notification, which is:
-                                          27.07.2020 tarihinden itibaren (ve bu tarih dahil olmak üzere) TL cinsi BIST
+                                          ``27.07.2020 tarihinden itibaren (ve bu tarih dahil olmak üzere) TL cinsi BIST
                                           Pay Endekslerinden ve Müşteri Endekslerinden iki sıfır atılmıştır. Bu tarihten
                                           önceki dosyalardaki endeks değerlerinin 100’e bölünerek ve bölen değerlerinin
                                           100’le çarpılarak kullanılması gerekmektedir. Ayrıca endekslerden sıfır
                                           atılması sonucu VİOP’ta işlem gören endeks vadeli işlem ve opsiyon
                                           sözleşmelerinde de değişiklikler yapılmıştır. 27.07.2020 tarihinden önceki
                                           VİOP dosyaları kullanılırken bu hususun dikkate alınması gerekmektedir. Bahsi
-                                          geçen hususlarda Borsa İstanbul’un herhangi bir sorumluluğu bulunmamaktadır.
+                                          geçen hususlarda Borsa İstanbul’un herhangi bir sorumluluğu bulunmamaktadır.``
     :param str state: The state or status of the user.
     :param str family_name: The family name of the user. (Optional)
     :param list[UserSubscription] subscriptions: A list of :class:`UserSubscription` instances representing the user's
                                                  subscriptions. (Optional)
 
-    :note:
-        - This class is intended to be used as an immutable data container, hence the frozen attribute.
-        - The slots attribute is enabled to optimize memory usage.
-        - The weakref_slot attribute is enabled to allow weak references to be created.
-        - Make sure to import the necessary modules (e.g., UserSubscription) before creating instances.
+    .. note::
+        - This class is intended to be used as an immutable data container, hence the `frozen` attribute.
+        - The `slots` attribute is enabled to optimize memory usage.
+        - The `weakref_slot` attribute is enabled to allow weak references to be created.
+        - Make sure to import the necessary modules (e.g., :class:`UserSubscription`) before creating instances.
 
-    :warning:
-        Ensure that you have defined the :class:`UserSubscription` class before initializing :class:`User` instances
-        with subscriptions.
+    .. warning::
+        - Ensure that you have defined the :class:`UserSubscription` class before initializing :class:`User` instances
+          with subscriptions.
 
-    :example:
+    :Example:
         Creating a :class:`User` instance:
 
         >>> subscription1 = UserSubscription(...)  # Initialize a UserSubscription instance
