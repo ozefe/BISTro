@@ -42,6 +42,44 @@ class DownloadError(Exception):
 
 
 class Session:
+    """A session management class for making HTTP requests with custom cookies and proxies.
+
+    This class provides the ability to create and manage an HTTP session with customizable cookies and proxies. Cookies
+    can be provided as a list of :class:`http.cookiejar.Cookie` objects or loaded from a cookie file specified by the
+    `cookies` parameter. Proxies can be set using the `proxies` parameter.
+
+    :param list[http.cookiejar.Cookie] | os.PathLike cookies: A list of :class:`http.cookiejar.Cookie` objects or a
+                                                              path-like object pointing to a cookie file. Default is
+                                                              `None`.
+    :param dict[str, str] proxies: A dictionary of proxy settings where keys are protocols (e.g., 'http', 'https') and
+                                   values are proxy URLs. Default is `None`.
+
+    :raises CookieFileError: If there's an error reading from the provided cookie file.
+    :raises CookieFileLoadError: If there's an error loading cookies from the provided cookie file.
+
+    .. note::
+        - The user agent for the session is set to mimic the Google Chrome browser.
+
+    .. warning::
+        - The :class:`Session` class is not thread-safe. Use separate instances for different threads.
+
+    .. seealso:: :class:`http.cookiejar.Cookie`, :class:`urllib.request.Request`, :class:`urllib.request.OpenerDirector`
+
+    :Example:
+        Creating a session with cookies and proxies:
+
+        >>> import pathlib
+        >>> session = Session(cookies=pathlib.Path('./cookies.txt'), proxies={'https': 'localhost'})
+        >>> list(session.cookie_jar)
+        [Cookie(version=0, name='test_cookie', value='1337', port=None, port_specified=False,
+         domain='httpbin.org', domain_specified=False, domain_initial_dot=False, path='/', path_specified=True,
+         secure=False, expires=None, discard=True, comment=None, comment_url=None, rest={}, rfc2109=False)]
+        >>> session.opener.handlers[0].proxies
+        {'https': 'localhost'}
+    """
+
+    # TODO: `Session` should have an ability to save cookies to a file.
+
     def __init__(self, cookies: list[http.cookiejar.Cookie] | os.PathLike = None, proxies: dict[str, str] = None):
         self.opener = urllib.request.build_opener()
 
@@ -65,11 +103,46 @@ class Session:
             except http.cookiejar.LoadError as tb:
                 raise CookieFileLoadError(f'Error loading cookies from provided cookie file: ({cookies})') from tb
             except OSError as tb:
-                raise CookieFileError(f'Error reading from provided cookie file: ({cookies})')
+                raise CookieFileError(f'Error reading from provided cookie file: ({cookies})') from tb
 
         self.opener.add_handler(urllib.request.HTTPCookieProcessor(self.cookie_jar))
 
     def open(self, request: urllib.request.Request) -> http.client.HTTPResponse:
+        """Open an HTTP request using the :class:`Session`'s settings.
+
+        This method opens an HTTP request using the :class:`Session`'s configured settings, including cookies and
+        proxies. It returns the corresponding HTTP response object.
+
+        :param urllib.request.Request request: The :class:`urllib.request.Request` object representing the HTTP request.
+
+        :return: HTTP Response object.
+        :rtype: http.client.HTTPResponse
+
+        .. note::
+            - This method uses the :class:`Session`'s opener to send the request and receive the response.
+
+        .. warning::
+            - Various parameters in `request` can override the :class:`Session.opener`'s configurations.
+
+        .. seealso:: :class:`Session`, :class:`urllib.request.Request`, :class:`urllib.request.OpenerDirector`,
+                     :class:`http.client.HTTPResponse`
+
+        :Example:
+            Opening a `request` with cookies:
+
+            >>> s = Session()
+            >>> response = s.open(urllib.request.Request('https://httpbin.org/cookies/set?test_cookie=1337'))
+            >>> print(response.read().decode('UTF-8'))
+            {
+              "cookies": {
+                "test_cookie": "1337"
+              }
+            }
+            >>> list(s.cookie_jar)
+            [Cookie(version=0, name='test_cookie', value='1337', port=None, port_specified=False,
+             domain='httpbin.org', domain_specified=False, domain_initial_dot=False, path='/', path_specified=True,
+             secure=False, expires=None, discard=True, comment=None, comment_url=None, rest={}, rfc2109=False)]
+        """
         return self.opener.open(request)
 
     def download(self, request: urllib.request.Request, file_path: os.PathLike, expected_file_size: int = None,
@@ -77,7 +150,7 @@ class Session:
         """Downloads a file from a given URL using the provided :class:`urllib.request.Request` and saves it to the
         specified `file_path`.
 
-        :param urllib.request.Request request: An object containing the URL and headers for the download.
+        :param urllib.request.Request request: The :class:`urllib.request.Request` object representing the HTTP request.
         :param os.PathLike file_path: The file path where the downloaded file will be saved.
         :param int expected_file_size: The expected size of the file in bytes, if known. Defaults to `None`.
         :param int max_retries: Maximum number of retries in case of download failures. Defaults to `3`.
@@ -102,6 +175,8 @@ class Session:
 
         .. warning::
             - Ensure that the provided `file_path` specifies a valid and writable file path in the filesystem.
+
+        .. seealso:: :class:`DownloadError`, :class:`Session`, :class:`urllib.request.Request`, :class:`os.PathLike`,
 
         :Example:
             Downloading an image file:
