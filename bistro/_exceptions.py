@@ -22,3 +22,24 @@ TODO: Module documentation.
 :copyright: (C) 2023 by Efe Özyay.
 :license: GNU General Public License 3.0, see LICENSE for more details.
 """
+import http.cookiejar
+
+
+class InvalidTimestampError(ValueError):
+    """Raised for invalid timestamp conversion."""
+
+
+class OverflowTimestampError(OverflowError):
+    """Raised for converting timestamps bigger than signed 32-bit integer to :class:`datetime.datetime` objects"""
+
+
+class CookieFileError(OSError):
+    """Raised for errors encountered while trying to read from the provided cookie file"""
+
+
+class CookieFileLoadError(http.cookiejar.LoadError):
+    """Raised for errors generated when trying to read and load from provided cookie file."""
+
+
+class DownloadError(Exception):
+    """Raised for download-related errors."""
