@@ -24,14 +24,7 @@ TODO: Module documentation.
 """
 import dataclasses
 import datetime
-
-
-class InvalidTimestampError(ValueError):
-    """Raised for invalid timestamp conversion."""
-
-
-class OverflowTimestampError(OverflowError):
-    """Raised for converting timestamps bigger than signed 32-bit integer to :class:`datetime.datetime` objects"""
+from _exceptions import InvalidTimestampError, OverflowTimestampError
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True, slots=True, weakref_slot=True)

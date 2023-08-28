@@ -27,18 +27,7 @@ import urllib.error
 import http.cookiejar
 import http.client
 import os
-
-
-class CookieFileError(OSError):
-    """Raised for errors encountered while trying to read from the provided cookie file"""
-
-
-class CookieFileLoadError(http.cookiejar.LoadError):
-    """Raised for errors generated when trying to read and load from provided cookie file."""
-
-
-class DownloadError(Exception):
-    """Raised for download-related errors."""
+from _exceptions import CookieFileError, CookieFileLoadError, DownloadError
 
 
 class Session:
