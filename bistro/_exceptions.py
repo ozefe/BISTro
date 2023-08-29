@@ -32,7 +32,7 @@ class BISTroBaseException(Exception):
 
     Represents a base exception for us to handle both logging and raising custom exceptions.
     """
-    def __init__(self, message, exc_info: bool = True):
+    def __init__(self, message: str, exc_info: bool = True):
         super().__init__(message, exc_info)
 
         _logger.error(message, exc_info=exc_info)
