@@ -32,12 +32,10 @@ class BISTroBaseException(Exception):
 
     Represents a base exception for us to handle both logging and raising custom exceptions.
     """
-    def __init__(self, message):
-        self.message = message
+    def __init__(self, message, exc_info: bool = True):
+        super().__init__(message, exc_info)
 
-        super().__init__(message)
-
-        _logger.error(message, exc_info=True, stack_info=True)
+        _logger.error(message, exc_info=exc_info)
 
 
 class InvalidTimestampError(BISTroBaseException):
