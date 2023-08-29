@@ -22,3 +22,17 @@ TODO: Package documentation.
 :copyright: (C) 2023 by Efe Özyay.
 :license: GNU General Public License 3.0, see LICENSE for more details.
 """
+import logging
+
+_logger = logging.getLogger('BISTro')
+_logger.setLevel(logging.DEBUG)
+
+_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+_stream_handler = logging.StreamHandler()
+_stream_handler.setFormatter(_formatter)
+_logger.addHandler(_stream_handler)
+
+_file_handler = logging.FileHandler('BISTro.log', encoding='UTF-8')
+_file_handler.setFormatter(_formatter)
+_logger.addHandler(_file_handler)
