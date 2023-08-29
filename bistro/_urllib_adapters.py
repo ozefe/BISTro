@@ -218,16 +218,17 @@ class Session:
 
                 return expected_file_size, file_path
             except (urllib.error.URLError, http.client.HTTPException, ConnectionError):
-                DownloadError(f'Error connecting to the host: {request.get_full_url()}')
+                DownloadError(f'Error connecting to the host: {request.get_full_url()}', exc_info=False)
             except (ValueError, TypeError):
-                DownloadError(f'Error processing data or malformed request for host: {request.get_full_url()}')
+                DownloadError(f'Error processing data or malformed request for host: {request.get_full_url()}',
+                              exc_info=False)
             except OSError:
-                DownloadError(f'File system error while working with the file: {file_path}')
+                DownloadError(f'File system error while working with the file: {file_path}', exc_info=False)
             except:
-                DownloadError(f'Unknown error encountered: {request.get_full_url()}')
+                DownloadError(f'Unknown error encountered: {request.get_full_url()}', exc_info=False)
             finally:
                 retries += 1
 
-            self._logger.debug(f'{max_retries=} for {request.get_full_url()=} so far')
+            self._logger.debug(f'{retries=} for {request.get_full_url()=} so far')
 
         raise DownloadError(f'{max_retries=} reached for {request.get_full_url()=} and {file_path=}')
