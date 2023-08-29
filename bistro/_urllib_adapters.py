@@ -26,8 +26,11 @@ import urllib.request
 import urllib.error
 import http.cookiejar
 import http.client
+import logging
 import os
 from _exceptions import CookieFileError, CookieFileLoadError, DownloadError
+
+_logger = logging.getLogger(f'BISTro.{__name__}')
 
 
 class Session:
@@ -70,6 +73,7 @@ class Session:
     # TODO: `Session` should have an ability to save cookies to a file.
 
     def __init__(self, cookies: list[http.cookiejar.Cookie] | os.PathLike = None, proxies: dict[str, str] = None):
+        self._logger = logging.getLogger(f'BISTro.{__name__}.Session')
         self.opener = urllib.request.build_opener()
 
         self.opener.addheaders = [
@@ -95,6 +99,8 @@ class Session:
                 raise CookieFileError(f'Error reading from provided cookie file: ({cookies})') from tb
 
         self.opener.add_handler(urllib.request.HTTPCookieProcessor(self.cookie_jar))
+
+        self._logger.debug(f'`Session` object has been initialized with {cookies=} and {proxies=}')
 
     def open(self, request: urllib.request.Request) -> http.client.HTTPResponse:
         """Open an HTTP request using the :class:`Session`'s settings.
@@ -132,6 +138,8 @@ class Session:
              domain='httpbin.org', domain_specified=False, domain_initial_dot=False, path='/', path_specified=True,
              secure=False, expires=None, discard=True, comment=None, comment_url=None, rest={}, rfc2109=False)]
         """
+        self._logger.debug(f'Opening {request.get_full_url()=}')
+
         return self.opener.open(request)
 
     def download(self, request: urllib.request.Request, file_path: os.PathLike, expected_file_size: int = None,
@@ -181,8 +189,7 @@ class Session:
             ... except DownloadError as e:
             ...     print(f'Error occurred during download: {e}')
         """
-
-        # TODO: We need a proper internal logging utility to make actual error handling and monitoring possible.
+        self._logger.debug(f'Downloading {request.get_full_url()=} to {file_path=} with {expected_file_size} bytes')
 
         retries = 0
         while retries <= max_retries:
@@ -194,6 +201,7 @@ class Session:
                     while chunk := response.read(1024 * 1024):
                         file.write(chunk)
                         downloaded_bytes += len(chunk)
+                        self._logger.debug(f'{downloaded_bytes=} for {request.get_full_url()=} so far')
 
                 if not expected_file_size:
                     expected_file_size = int(response.getheader('Content-Length', 0))
@@ -205,16 +213,21 @@ class Session:
                 if downloaded_bytes < expected_file_size and expected_file_size > 0:
                     raise DownloadError('Downloaded data is incomplete or malformed.')
 
+                self._logger.debug(f'{request.get_full_url()=} successfully downloaded to {file_path=} with '
+                                   f'{expected_file_size=} bytes')
+
                 return expected_file_size, file_path
-            except (urllib.error.URLError, http.client.HTTPException, ConnectionError) as tb:
-                raise DownloadError(f'Error connecting to the host: {request}') from tb
-            except (ValueError, TypeError) as tb:
-                raise DownloadError(f'Error processing data or malformed request: {request}') from tb
-            except OSError as tb:
-                raise DownloadError(f'File system error while working with the file: {file_path}') from tb
-            except Exception as tb:
-                raise DownloadError(f'Unknown error encountered: {request}') from tb
+            except (urllib.error.URLError, http.client.HTTPException, ConnectionError):
+                DownloadError(f'Error connecting to the host: {request.get_full_url()}')
+            except (ValueError, TypeError):
+                DownloadError(f'Error processing data or malformed request for host: {request.get_full_url()}')
+            except OSError:
+                DownloadError(f'File system error while working with the file: {file_path}')
+            except:
+                DownloadError(f'Unknown error encountered: {request.get_full_url()}')
             finally:
                 retries += 1
+
+            self._logger.debug(f'{max_retries=} for {request.get_full_url()=} so far')
 
         raise DownloadError(f'{max_retries=} reached for {request.get_full_url()=} and {file_path=}')
