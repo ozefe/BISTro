@@ -22,24 +22,39 @@ TODO: Module documentation.
 :copyright: (C) 2023 by Efe Özyay.
 :license: GNU General Public License 3.0, see LICENSE for more details.
 """
-import http.cookiejar
+import logging
+
+_logger = logging.getLogger(f'BISTro.{__name__}')
 
 
-class InvalidTimestampError(ValueError):
-    """Raised for invalid timestamp conversion."""
+class BISTroBaseException(Exception):
+    """Base exception for BISTro
+
+    Represents a base exception for us to handle both logging and raising custom exceptions.
+    """
+    def __init__(self, message):
+        self.message = message
+
+        super().__init__(message)
+
+        _logger.error(message, exc_info=True, stack_info=True)
 
 
-class OverflowTimestampError(OverflowError):
+class InvalidTimestampError(BISTroBaseException):
+    """Raised for invalid timestamp conversion"""
+
+
+class OverflowTimestampError(BISTroBaseException):
     """Raised for converting timestamps bigger than signed 32-bit integer to :class:`datetime.datetime` objects"""
 
 
-class CookieFileError(OSError):
+class CookieFileError(BISTroBaseException):
     """Raised for errors encountered while trying to read from the provided cookie file"""
 
 
-class CookieFileLoadError(http.cookiejar.LoadError):
-    """Raised for errors generated when trying to read and load from provided cookie file."""
+class CookieFileLoadError(BISTroBaseException):
+    """Raised for errors generated when trying to read and load from provided cookie file"""
 
 
-class DownloadError(Exception):
-    """Raised for download-related errors."""
+class DownloadError(BISTroBaseException):
+    """Raised for download-related errors"""
