@@ -1,4 +1,4 @@
-# BISTro - BISTro allows you to fetch, filter and parse financial data from Borsa Istanbul
+# BISTro - BISTro allows you to fetch, filter and parse historical financial data from Borsa Istanbul DataStore
 #
 # Copyright (C) 2023  Efe Özyay
 #
