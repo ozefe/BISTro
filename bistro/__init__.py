@@ -18,9 +18,6 @@
 """BISTro
 
 TODO: Package documentation.
-
-:copyright: (C) 2023 by Efe Özyay.
-:license: GNU General Public License 3.0, see LICENSE for more details.
 """
 import logging
 
@@ -36,3 +33,5 @@ _logger.addHandler(_stream_handler)
 _file_handler = logging.FileHandler('BISTro.log', encoding='UTF-8')
 _file_handler.setFormatter(_formatter)
 _logger.addHandler(_file_handler)
+
+_logger.debug('Started logging.')

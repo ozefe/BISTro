@@ -18,9 +18,6 @@
 """bistro._urllib_adapters
 
 TODO: Module documentation.
-
-:copyright: (C) 2023 by Efe Özyay.
-:license: GNU General Public License 3.0, see LICENSE for more details.
 """
 import urllib.request
 import urllib.error
@@ -36,28 +33,35 @@ _logger = logging.getLogger(f'BISTro.{__name__}')
 class Session:
     """A session management class for making HTTP requests with custom cookies and proxies.
 
-    This class provides the ability to create and manage an HTTP session with customizable cookies and proxies. Cookies
-    can be provided as a list of :class:`http.cookiejar.Cookie` objects or loaded from a cookie file specified by the
-    `cookies` parameter. Proxies can be set using the `proxies` parameter.
+    This class facilitates creating and managing an HTTP session with customizable cookies and proxies. You can provide
+    cookies as a list of :class:`http.cookiejar.Cookie` objects or load them from a cookie file specified by the
+    :attr:`cookies` parameter. Proxies can be set using the :attr:`proxies` parameter.
 
-    :param list[http.cookiejar.Cookie] | os.PathLike cookies: A list of :class:`http.cookiejar.Cookie` objects or a
-                                                              path-like object pointing to a cookie file. Default is
-                                                              `None`.
-    :param dict[str, str] proxies: A dictionary of proxy settings where keys are protocols (e.g., 'http', 'https') and
-                                   values are proxy URLs. Default is `None`.
+    Arguments:
+        cookies: A list of :class:`http.cookiejar.Cookie` objects or a :class:`os.PathLike` object pointing to a cookie
+            file.
+        proxies: A dictionary of proxy settings where keys are protocols (e.g., 'https') and values are proxy URLs.
 
-    :raises CookieFileError: If there's an error reading from the provided cookie file.
-    :raises CookieFileLoadError: If there's an error loading cookies from the provided cookie file.
+    Raises:
+        CookieFileError: If there's an error reading from the provided cookie file.
+        CookieFileLoadError: If there's an error loading cookies from the provided cookie file.
 
-    .. note::
-        - The user agent for the session is set to mimic the Google Chrome browser.
+    Notes:
+        - The `User-Agent` for the session is set to mimic the Google Chrome browser.
+        - Provided :attr:`proxies` should support the HTTPS protocol. This is important because we're sending
+          unencrypted and unhashed sensitive user login information through this connection.
+        - :class:`Session` is not thread-safe. Use separate instances for different threads.
 
-    .. warning::
-        - The :class:`Session` class is not thread-safe. Use separate instances for different threads.
+    See Also:
+        - :class:`CookieFileError`
+        - :class:`CookieFileLoadError`
+        - :class:`http.cookiejar.Cookie`
+        - :class:`http.cookiejar.CookieJar`
+        - :class:`http.cookiejar.LWPCookieJar`
+        - :class:`urllib.request.Request`
+        - :class:`urllib.request.OpenerDirector`
 
-    .. seealso:: :class:`http.cookiejar.Cookie`, :class:`urllib.request.Request`, :class:`urllib.request.OpenerDirector`
-
-    :Example:
+    Example:
         Creating a session with cookies and proxies:
 
         >>> import pathlib
@@ -68,11 +72,12 @@ class Session:
          secure=False, expires=None, discard=True, comment=None, comment_url=None, rest={}, rfc2109=False)]
         >>> session.opener.handlers[0].proxies
         {'https': 'localhost'}
+
+    Todo:
+        - :class:`Session` should have an ability to save cookies to a file.
     """
-
-    # TODO: `Session` should have an ability to save cookies to a file.
-
-    def __init__(self, cookies: list[http.cookiejar.Cookie] | os.PathLike = None, proxies: dict[str, str] = None):
+    def __init__(self, cookies: list[http.cookiejar.Cookie] | os.PathLike = None,
+                 proxies: dict[str, str] = None) -> None:
         self._logger = logging.getLogger(f'BISTro.{__name__}.Session')
         self.opener = urllib.request.build_opener()
 
@@ -108,22 +113,24 @@ class Session:
         This method opens an HTTP request using the :class:`Session`'s configured settings, including cookies and
         proxies. It returns the corresponding HTTP response object.
 
-        :param urllib.request.Request request: The :class:`urllib.request.Request` object representing the HTTP request.
+        Arguments:
+            request: :class:`urllib.request.Request` object representing the HTTP request.
 
-        :return: HTTP Response object.
-        :rtype: http.client.HTTPResponse
+        Returns:
+            HTTP Response object.
 
-        .. note::
-            - This method uses the :class:`Session`'s opener to send the request and receive the response.
+        Note:
+            - This method uses the :class:`Session`'s opener to send the request and receive the response. Thus, various
+              parameters in :attr:`request` can override the :class:`Session.opener`'s configurations.
 
-        .. warning::
-            - Various parameters in `request` can override the :class:`Session.opener`'s configurations.
+        See Also:
+            - :attr:`Session.opener`
+            - :class:`Session`
+            - :class:`urllib.request.Request`
+            - :class:`http.client.HTTPResponse`
 
-        .. seealso:: :class:`Session`, :class:`urllib.request.Request`, :class:`urllib.request.OpenerDirector`,
-                     :class:`http.client.HTTPResponse`
-
-        :Example:
-            Opening a `request` with cookies:
+        Example:
+            Opening a request with cookies:
 
             >>> s = Session()
             >>> response = s.open(urllib.request.Request('https://httpbin.org/cookies/set?test_cookie=1337'))
@@ -144,38 +151,44 @@ class Session:
 
     def download(self, request: urllib.request.Request, file_path: os.PathLike, expected_file_size: int = None,
                  max_retries: int = 3) -> tuple[int, os.PathLike]:
-        """Downloads a file from a given URL using the provided :class:`urllib.request.Request` and saves it to the
-        specified `file_path`.
+        """Download a file from a given URL using the provided :attr:`request` and save it to the specified
+        :attr:`file_path`.
 
-        :param urllib.request.Request request: The :class:`urllib.request.Request` object representing the HTTP request.
-        :param os.PathLike file_path: The file path where the downloaded file will be saved.
-        :param int expected_file_size: The expected size of the file in bytes, if known. Defaults to `None`.
-        :param int max_retries: Maximum number of retries in case of download failures. Defaults to `3`.
+        Arguments:
+            request: :class:`urllib.request.Request` object representing the HTTP request.
+            file_path: File path where the downloaded file will be saved.
+            expected_file_size: Expected size of the file in bytes, if known.
+            max_retries: Maximum number of retries in case of download failures.
 
-        :return: A tuple containing two values:
-                 1. The actual size of the downloaded file in bytes.
-                 2. The file path where the downloaded content has been saved.
-        :rtype: tuple[int, os.PathLike]
+        Returns:
+            A tuple containing two values:
+                1. The actual size of the downloaded file in bytes.
+                2. The file path where the downloaded content has been saved.
 
-        :raises DownloadError: If any of these errors occur during the download process:
-                               1. If there are connection-related errors, such as :class:`urllib.error.URLError`.
-                               2. If the provided `request` object is invalid or if there are data processing errors,
-                                  i.e., :class:`ValueError`, :class:`TypeError`.
-                               3. If there are file system errors during file operations, i.e. :class:`PermissionError`.
-                               4. If there are unexpected errors that cannot be categorized.
+        Raises:
+            DownloadError:
+                If any of these errors occur during the download process:
+                    1. If there are connection-related errors, such as :class:`urllib.error.URLError`.
+                    2. If the provided :attr:`request` object is invalid or if there are data processing errors,
+                    i.e., :class:`ValueError`, :class:`TypeError`.
+                    3. If there are file system errors during file operations, i.e. :class:`PermissionError`.
+                    4. If there are unexpected errors that cannot be categorized.
 
-        .. note::
-            - The `Session.download()` employs `Session.open()` to handle requests. Consequently, any supplementary
+        Notes:
+            - :meth:`Session.download` employs :meth:`Session.open` to handle requests. Consequently, any supplementary
               arguments included in the request (such as cookies or headers) will supersede the default :class:`Session`
               parameters. This circumstance bears the potential of giving rise to unanticipated errors that lack proper
               documentation.
+            - Ensure that the provided :attr:`file_path` specifies a valid and writable file path in the filesystem.
 
-        .. warning::
-            - Ensure that the provided `file_path` specifies a valid and writable file path in the filesystem.
+        See Also:
+            - :meth:`Session.open`
+            - :class:`DownloadError`
+            - :class:`Session`
+            - :class:`urllib.request.Request`
+            - :class:`os.PathLike`
 
-        .. seealso:: :class:`DownloadError`, :class:`Session`, :class:`urllib.request.Request`, :class:`os.PathLike`,
-
-        :Example:
+        Example:
             Downloading an image file:
 
             >>> import pathlib

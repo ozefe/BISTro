@@ -18,9 +18,6 @@
 """bistro._models
 
 TODO: Module documentation.
-
-:copyright: (C) 2023 by Efe Özyay.
-:license: GNU General Public License 3.0, see LICENSE for more details.
 """
 import dataclasses
 import datetime
@@ -29,52 +26,51 @@ from _exceptions import InvalidTimestampError, OverflowTimestampError
 
 @dataclasses.dataclass(frozen=True, kw_only=True, slots=True, weakref_slot=True)
 class UserSubscription:
-    """Represents a data subscription that :class:`User` has subscribed.
+    """Represents a data subscription that a :class:`User` has subscribed to.
 
-    :class:`UserSubscription` encapsulates partial data subscription details, indicating the specific information to
-    which a :class:`User` has already subscribed. It provides information about the subscription's ID, price, name, and
-    more. Use :class:`UserSubscription` for basic subscription information; for complete data, refer to the
-    :class:`Subscription`.
+    This dataclass encapsulates partial data subscription details for a :class:`User`. It provides information about the
+    subscription's ID, price, name, and more. For complete data, refer to the :class:`Subscription`.
 
-    :param int id: The unique identifier of the subscription.
-    :param int ref_id: The reference ID of the subscription.
-    :param float price: The price of the subscription in Turkish Lira (₺).
-    :param int available_period: The available period of the subscription in months.
-    :param str category_code: The category code of the subscription.
-    :param str group_code: The group code of the subscription.
-    :param str subcategory_code: The subcategory code of the subscription.
-    :param int product_type_id: The product type ID of the subscription.
-    :param int profile_id: The profile ID associated with the subscription.
-    :param str name: The Turkish name of the subscription.
-    :param str name_en: The English name of the subscription.
-    :param int created_timestamp: The UNIX timestamp of subscription creation in milliseconds
-                                  (``1'000 milliseconds = 1 second``).
-    :param int expiration_timestamp: The UNIX timestamp of subscription expiration in milliseconds
-                                     (``1'000 milliseconds = 1 second``) or in microseconds
-                                     (``1'000'000 microseconds = 1 second``).
-    :param str created_date_text: The creation date of the subscription in the `DD.MM.YYYY` format.
-    :param str expiration_date_text: The expiration date of the subscription in the `DD.MM.YYYY` format.
+    Arguments:
+        id: The unique identifier of the subscription.
+        ref_id: The reference ID of the subscription.
+        price: The subscription price in Turkish Lira (₺).
+        available_period: The subscription period in months.
+        category_code: The category code of the subscription.
+        group_code: The group code of the subscription.
+        subcategory_code: The subcategory code of the subscription.
+        product_type_id: The product type ID of the subscription.
+        profile_id: The associated profile ID.
+        name: The name of the subscription in Turkish.
+        name_en: The name of the subscription in English.
+        created_timestamp: The creation timestamp in milliseconds.
+        expiration_timestamp: The expiration timestamp in milliseconds or microseconds.
+        created_date_text: The creation date in the `DD.MM.YYYY` format.
+        expiration_date_text: The expiration date in the `DD.MM.YYYY` format.
 
-    :ivar datetime.datetime created_datetime: The creation date and time of the subscription (calculated).
-    :ivar datetime.datetime expiration_datetime: The expiration date and time of the subscription (calculated).
+    Attributes:
+        created_datetime: The calculated creation date and time.
+        expiration_datetime: The calculated expiration date and time.
 
-    :raises InvalidTimestampError: If any provided timestamp is not convertible to a valid datetime.
-    :raises OverflowTimestampError: If provided timestamp for `UserSubscription.created_datetime` is bigger than signed
-                                    32-bit integer.
+    Raises:
+        InvalidTimestampError: If provided timestamp is not convertible to a valid datetime.
+        OverflowTimestampError: If :attr:`created_datetime` timestamp is larger than 32-bit integer.
 
-    .. note::
+    Notes:
         - This class is intended to be used as an immutable data container, hence the `frozen` attribute.
-        - The `slots` attribute is enabled to optimize memory usage.
-        - The `weakref_slot` attribute is enabled to allow weak references to be created.
-        - The `profile_id` might not be the same as the user's ID. More documentation needed.
+        - The `slots` attribute is enabled for optimized memory usage.
+        - The `weakref_slot` attribute allows weak references.
+        - The :attr:`profile_id` might differ from the user's ID, requiring further documentation.
+        - Be cautious of potential timestamp overflow issues when handling large timestamps.
 
-    .. warning::
-        - Be aware of potential timestamp overflow issues when working with extremely large timestamps.
+    See Also:
+        - :class:`datetime.datetime`
+        - :class:`InvalidTimestampError`
+        - :class:`OverflowTimestampError`
+        - :class:`Subscription`
+        - :class:`User`
 
-    .. seealso:: :class:`datetime.datetime`, :class:`InvalidTimestampError`, :class:`OverflowTimestampError`,
-                 :class:`User`
-
-    :Example:
+    Example:
         Creating a :class:`UserSubscription` instance:
 
         >>> subscription = UserSubscription(
@@ -93,11 +89,10 @@ class UserSubscription:
         "PP Piyasa Verileri Aboneliği (12 Ay)"
         >>> print(subscription.created_datetime)
         2022-08-25 00:00:00
+
+    Todo:
+        - :attr:`UserSubscription.profile_id` is not the same as :attr:`User.id`. Documentation required.
     """
-
-    # TODO: `UserSubscription.profile_id` is not the same as `User.id` and I have no idea why. It seems the difference
-    #  between two of these IDs is 920. Write a more comprehensive documentation for this attribute.
-
     id: int
     ref_id: int
     price: float
@@ -116,7 +111,7 @@ class UserSubscription:
     created_datetime: datetime.datetime = dataclasses.field(init=False)
     expiration_datetime: datetime.datetime = dataclasses.field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize calculated datetime fields."""
         # The BIST DataStore employs timestamps in milliseconds and supports subscription periods of up to 999999
         # months, equivalent to 833 years and 10 months. It appears that they use larger integer types, probably i64,
@@ -159,41 +154,29 @@ class UserSubscription:
 class User:
     """Represents a user object.
 
-    :class:`User` holds various information about a user, including their identification, username, email, and various
-    settings.
+    This class encapsulates information about a user, including identification, username, and email.
 
-    :param int id: The unique identifier of the user.
-    :param str username: The username of the user.
-    :param str email: The email address associated with the user.
-    :param bool email_confirmed: A flag indicating whether the user's email has been confirmed.
-    :param bool password_change_required: A flag indicating whether a password change is required for the user.
-    :param bool endeks_notification_read: A flag indicating whether the user has read the Endeks notification, which is:
-                                          ``27.07.2020 tarihinden itibaren (ve bu tarih dahil olmak üzere) TL cinsi BIST
-                                          Pay Endekslerinden ve Müşteri Endekslerinden iki sıfır atılmıştır. Bu tarihten
-                                          önceki dosyalardaki endeks değerlerinin 100’e bölünerek ve bölen değerlerinin
-                                          100’le çarpılarak kullanılması gerekmektedir. Ayrıca endekslerden sıfır
-                                          atılması sonucu VİOP’ta işlem gören endeks vadeli işlem ve opsiyon
-                                          sözleşmelerinde de değişiklikler yapılmıştır. 27.07.2020 tarihinden önceki
-                                          VİOP dosyaları kullanılırken bu hususun dikkate alınması gerekmektedir. Bahsi
-                                          geçen hususlarda Borsa İstanbul’un herhangi bir sorumluluğu bulunmamaktadır.``
-    :param str state: The state or status of the user.
-    :param str family_name: The family name of the user. (Optional)
-    :param list[UserSubscription] subscriptions: A list of :class:`UserSubscription` instances representing the user's
-                                                 subscriptions. (Optional)
+    Arguments:
+        id: The unique identifier of the user.
+        username: The username of the user.
+        email: The email address associated with the user.
+        email_confirmed: Indicates if the user's email has been confirmed.
+        password_change_required: Indicates if a password change is required.
+        endeks_notification_read: Indicates if the user has read the Endeks notification.
+        state: The state or status of the user.
+        family_name: The family name of the user.
+        subscriptions: List of :class:`UserSubscription` instances for user's subscriptions.
 
-    .. note::
+    Notes:
         - This class is intended to be used as an immutable data container, hence the `frozen` attribute.
-        - The `slots` attribute is enabled to optimize memory usage.
-        - The `weakref_slot` attribute is enabled to allow weak references to be created.
-        - Make sure to import the necessary modules (e.g., :class:`UserSubscription`) before creating instances.
+        - Use the `slots` attribute for optimized memory usage.
+        - The `weakref_slot` attribute enables weak references.
+        - Define :class:`UserSubscription` class before initializing :class:`User` instances with subscriptions.
 
-    .. warning::
-        - Ensure that you have defined the :class:`UserSubscription` class before initializing :class:`User` instances
-          with subscriptions.
+    See Also:
+        - :class:`UserSubscription`
 
-    .. seealso:: :class:`UserSubscription`
-
-    :Example:
+    Example:
         Creating a :class:`User` instance:
 
         >>> subscription1 = UserSubscription(...)  # Initialize a UserSubscription instance
@@ -209,17 +192,12 @@ class User:
         ...     family_name="Doe",
         ...     subscriptions=[subscription1, subscription2]
         ... )
+
+    Todo:
+        - Clarify the purpose of :attr:`password_change_required` flag.
+        - Investigate API call for changing :attr:`family_name`.
+        - Provide comprehensive documentation on possible :attr:`state` values.
     """
-
-    # TODO: Clarify the purpose of the `password_change_required` flag. It appears to be related to password expiration
-    #  and periodic changes, but the exact mechanism and interval are currently unknown. Further investigation is needed
-
-    # TODO: Currently, there's no information available about the API call for changing the `family_name`, which is
-    #  intriguing given that `family_name` is set to `None` by default.
-
-    # TODO: Presently, the only recognized `state` value is `ACTIVE`. A more thorough investigation is needed to provide
-    #  comprehensive documentation on possible `state` values.
-
     id: int
     username: str
     email: str

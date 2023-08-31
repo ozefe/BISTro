@@ -18,9 +18,6 @@
 """bistro._exceptions
 
 TODO: Module documentation.
-
-:copyright: (C) 2023 by Efe Özyay.
-:license: GNU General Public License 3.0, see LICENSE for more details.
 """
 import logging
 
@@ -39,20 +36,20 @@ class BISTroBaseException(Exception):
 
 
 class InvalidTimestampError(BISTroBaseException):
-    """Raised for invalid timestamp conversion"""
+    """Invalid timestamp conversion"""
 
 
 class OverflowTimestampError(BISTroBaseException):
-    """Raised for converting timestamps bigger than signed 32-bit integer to :class:`datetime.datetime` objects"""
+    """Cannot convert timestamps bigger than signed 32-bit integer to :class:`datetime.datetime` objects"""
 
 
 class CookieFileError(BISTroBaseException):
-    """Raised for errors encountered while trying to read from the provided cookie file"""
+    """Cannot read from the provided cookie file"""
 
 
 class CookieFileLoadError(BISTroBaseException):
-    """Raised for errors generated when trying to read and load from provided cookie file"""
+    """Cannot read and load from provided cookie file"""
 
 
 class DownloadError(BISTroBaseException):
-    """Raised for download-related errors"""
+    """Download-related errors"""
