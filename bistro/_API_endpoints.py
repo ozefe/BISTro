@@ -19,3 +19,11 @@
 
 TODO: Module documentation.
 """
+# Main Borsa Istanbul DataStore API URLs
+MAIN_URL = 'https://datastore.borsaistanbul.com'
+MAIN_API = f'{MAIN_URL}/api'
+
+# Related to the login session
+REGISTER_LOGIN = f'{MAIN_API}/register-login'
+LOGIN_CONTROL = f'{MAIN_API}/login-control'
+LOGOUT = f'{MAIN_API}/logout'
