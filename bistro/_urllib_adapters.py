@@ -86,7 +86,15 @@ class Session:
         self.opener.addheaders = [
             ('User-Agent',
              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 '
-             'Safari/537.36')
+             'Safari/537.36'),
+            ('Accept', 'application/json, text/javascript, */*; q=0.01'),
+            ('Accept-Encoding', 'identity'),
+            ('Connection', 'keep-alive'),
+            ('Content-Type', 'application/json'),
+            ('Host', 'datastore.borsaistanbul.com'),
+            ('Origin', 'https://datastore.borsaistanbul.com'),
+            ('Referer', 'https://datastore.borsaistanbul.com'),
+            ('X-Requested-With', 'XMLHttpRequest')
         ]
 
         if proxies:
@@ -163,10 +171,14 @@ class Session:
              domain='httpbin.org', domain_specified=False, domain_initial_dot=False, path='/', path_specified=True,
              secure=False, expires=None, discard=True, comment=None, comment_url=None, rest={}, rfc2109=False)]
         """
-        self._logger.debug(f'Opening {request.get_full_url()=}')
+        self._logger.debug(f'Opening {request.get_full_url()}')
 
         # A simple and naive attempt at HTTP error *handling*.
-        response = self.opener.open(request)
+        try:
+            response = self.opener.open(request)
+        except urllib.error.HTTPError as tb:
+            raise URLOpenError(f'Error opening {request.get_full_url()}') from tb
+
         match request.get_method():
             case 'GET':
                 if response.code != 200:
