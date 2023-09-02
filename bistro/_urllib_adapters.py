@@ -23,9 +23,11 @@ import urllib.request
 import urllib.error
 import http.cookiejar
 import http.client
+import json
 import logging
 import os
-from _exceptions import CookieFileError, CookieFileLoadError, DownloadError
+from bistro._exceptions import (UnknownError, CookieFileError, CookieFileLoadError, URLOpenError, DownloadError,
+                                DownloadMaxRetriesReachedError, UTFDecodeError, JSONDeserializationError)
 
 _logger = logging.getLogger(f'BISTro.{__name__}')
 
@@ -101,23 +103,36 @@ class Session:
             except http.cookiejar.LoadError as tb:
                 raise CookieFileLoadError(f'Error loading cookies from provided cookie file: ({cookies})') from tb
             except OSError as tb:
+                tb.add_note('Please make sure the file exists and you have authorization to read from it.')
                 raise CookieFileError(f'Error reading from provided cookie file: ({cookies})') from tb
 
         self.opener.add_handler(urllib.request.HTTPCookieProcessor(self.cookie_jar))
 
         self._logger.debug(f'`Session` object has been initialized with {cookies=} and {proxies=}')
 
-    def open(self, request: urllib.request.Request) -> http.client.HTTPResponse:
+    def open(self, request: urllib.request.Request, parse_json: bool = True) -> http.client.HTTPResponse | dict:
         """Open an HTTP request using the :class:`Session`'s settings.
 
         This method opens an HTTP request using the :class:`Session`'s configured settings, including cookies and
-        proxies. It returns the corresponding HTTP response object.
+        proxies.
 
         Arguments:
             request: :class:`urllib.request.Request` object representing the HTTP request.
+            parse_json: Indicates whether to attempt parsing the body of the received response object as JSON.
 
         Returns:
-            HTTP Response object.
+            HTTP Response object or dict.
+
+        Raises:
+            URLOpenError:
+                If there's an issue regarding the actual connection, i.e., unexpected response codes, unsupported HTTP
+                methods, etc.
+            UTFDecodeError:
+                When cannot decode given response body to UTF-8, UTF-16 or UTF-32 properly.
+            JSONDeserializationError:
+                When response body has malformed or corrupted JSON object.
+            UnknownError:
+                Self explanatory.
 
         Note:
             - This method uses the :class:`Session`'s opener to send the request and receive the response. Thus, various
@@ -128,17 +143,20 @@ class Session:
             - :class:`Session`
             - :class:`urllib.request.Request`
             - :class:`http.client.HTTPResponse`
+            - :meth:`json.load`
+            - :class:`UTF8DecodeError`
+            - :class:`JSONDeserializationError`
 
         Example:
-            Opening a request with cookies:
+            Opening a request with cookies and parsing the response body as JSON:
 
             >>> s = Session()
             >>> response = s.open(urllib.request.Request('https://httpbin.org/cookies/set?test_cookie=1337'))
-            >>> print(response.read().decode('UTF-8'))
+            >>> print(json.dumps(response, indent=4))
             {
-              "cookies": {
-                "test_cookie": "1337"
-              }
+                "cookies": {
+                    "test_cookie": "1337"
+                }
             }
             >>> list(s.cookie_jar)
             [Cookie(version=0, name='test_cookie', value='1337', port=None, port_specified=False,
@@ -147,7 +165,33 @@ class Session:
         """
         self._logger.debug(f'Opening {request.get_full_url()=}')
 
-        return self.opener.open(request)
+        # A simple and naive attempt at HTTP error *handling*.
+        response = self.opener.open(request)
+        match request.get_method():
+            case 'GET':
+                if response.code != 200:
+                    raise URLOpenError(f'Encountered unexpected HTTP status code {response.code} ({response.reason}) '
+                                       f'while trying to open {request.get_full_url()}', exc_info=False)
+            case request_method:
+                raise URLOpenError(f'{request_method} is not supported', exc_info=False)
+
+        if not parse_json:
+            return response
+
+        self._logger.debug(f'Parsing content of {request.get_full_url()} as JSON')
+        try:
+            return json.load(response)
+        except UnicodeError as tb:
+            tb.add_note('Encoding of the content must be UTF-8, UTF-16 or UTF-32.')
+            raise UTFDecodeError(f'Could not decode content of {request.get_full_url()}') from tb
+        except json.decoder.JSONDecodeError as tb:
+            tb.add_note('Encoding of the content must be UTF-8, UTF-16 or UTF-32.')
+            tb.add_note('Content must be a valid JSON object.')
+            raise JSONDeserializationError(f'Could not deserialize content of {request.get_full_url()}') from tb
+        except Exception as tb:
+            tb.add_note('If you do not want to parse response body as JSON, please set the `parse_json` flag to `False`'
+                        ' when using `Session.open()`')
+            raise UnknownError(f'Encountered an unknown error while processing {request.get_full_url()}') from tb
 
     def download(self, request: urllib.request.Request, file_path: os.PathLike, expected_file_size: int = None,
                  max_retries: int = 3) -> tuple[int, os.PathLike]:
@@ -173,6 +217,8 @@ class Session:
                     i.e., :class:`ValueError`, :class:`TypeError`.
                     3. If there are file system errors during file operations, i.e. :class:`PermissionError`.
                     4. If there are unexpected errors that cannot be categorized.
+            DownloadMaxRetriesReachedError:
+                If maximum retry limit (default is `3`) has been reached for the provided URL to be downloaded.
 
         Notes:
             - :meth:`Session.download` employs :meth:`Session.open` to handle requests. Consequently, any supplementary
@@ -184,6 +230,7 @@ class Session:
         See Also:
             - :meth:`Session.open`
             - :class:`DownloadError`
+            - :class:`DownloadMaxRetriesReachedError`
             - :class:`Session`
             - :class:`urllib.request.Request`
             - :class:`os.PathLike`
@@ -201,20 +248,23 @@ class Session:
             ...     print(f'Download successful. File size: {downloaded_size} bytes. Saved at: {downloaded_path}')
             ... except DownloadError as e:
             ...     print(f'Error occurred during download: {e}')
+            ... except DownloadMaxRetriesReachedError as e:
+            ...     print(f'Maximum retry limit reached: {e}')
+            Download successful. File size: 35588 bytes. Saved at: wolf.jpeg
         """
-        self._logger.debug(f'Downloading {request.get_full_url()=} to {file_path=} with {expected_file_size} bytes')
+        self._logger.debug(f'Downloading {request.get_full_url()} to {file_path} with {expected_file_size} bytes')
 
         retries = 0
         while retries <= max_retries:
             try:
-                with open(file_path, 'wb') as file, self.open(request) as response:
+                with open(file_path, 'wb') as file, self.open(request, parse_json=False) as response:
                     downloaded_bytes = 0
 
                     # Reading and writing 1MB (1024B * 1024B = 1MB) chunks each time to prevent memory overflow.
                     while chunk := response.read(1024 * 1024):
                         file.write(chunk)
                         downloaded_bytes += len(chunk)
-                        self._logger.debug(f'{downloaded_bytes=} for {request.get_full_url()=} so far')
+                        self._logger.debug(f'{downloaded_bytes=} for {request.get_full_url()} so far')
 
                 if not expected_file_size:
                     expected_file_size = int(response.getheader('Content-Length', 0))
@@ -224,10 +274,10 @@ class Session:
                 # Consequently, we are compelled to assume that the file is not corrupted due to the absence of relevant
                 # information.
                 if downloaded_bytes < expected_file_size and expected_file_size > 0:
-                    raise DownloadError('Downloaded data is incomplete or malformed.')
+                    raise DownloadError('Downloaded data is incomplete or malformed.', exc_info=False)
 
-                self._logger.debug(f'{request.get_full_url()=} successfully downloaded to {file_path=} with '
-                                   f'{expected_file_size=} bytes')
+                self._logger.debug(f'{request.get_full_url()} successfully downloaded to {file_path} with '
+                                   f'{expected_file_size} bytes')
 
                 return expected_file_size, file_path
             except (urllib.error.URLError, http.client.HTTPException, ConnectionError):
@@ -237,11 +287,14 @@ class Session:
                               exc_info=False)
             except OSError:
                 DownloadError(f'File system error while working with the file: {file_path}', exc_info=False)
+            except (URLOpenError, UTFDecodeError, JSONDeserializationError, DownloadError, UnknownError) as tb:
+                DownloadError(f'Downloading {request.get_full_url()} failed because: {tb}', exc_info=False)
             except:
-                DownloadError(f'Unknown error encountered: {request.get_full_url()}', exc_info=False)
+                UnknownError(f'Encountered an unknown error while downloading {request.get_full_url()}', exc_info=False)
             finally:
                 retries += 1
 
             self._logger.debug(f'{retries=} for {request.get_full_url()=} so far')
 
-        raise DownloadError(f'{max_retries=} reached for {request.get_full_url()=} and {file_path=}')
+        raise DownloadMaxRetriesReachedError(f'{max_retries=} reached for {request.get_full_url()=} and {file_path=}',
+                                             exc_info=False)
