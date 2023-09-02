@@ -35,6 +35,10 @@ class BISTroBaseException(Exception):
         _logger.error(message, exc_info=exc_info)
 
 
+class UnknownError(BISTroBaseException):
+    """Errors that are unknown"""
+
+
 class InvalidTimestampError(BISTroBaseException):
     """Invalid timestamp conversion"""
 
@@ -51,5 +55,21 @@ class CookieFileLoadError(BISTroBaseException):
     """Cannot read and load from provided cookie file"""
 
 
+class URLOpenError(BISTroBaseException):
+    """Errors related to opening a URL"""
+
+
 class DownloadError(BISTroBaseException):
     """Download-related errors"""
+
+
+class DownloadMaxRetriesReachedError(BISTroBaseException):
+    """Maximum retries has been reached for provided URL to be downloaded"""
+
+
+class UTFDecodeError(BISTroBaseException):
+    """Errors related to UTF-8, UTF-16 or UTF-32 decoding"""
+
+
+class JSONDeserializationError(BISTroBaseException):
+    """Errors related to JSON deserialization"""
