@@ -27,3 +27,8 @@ MAIN_API = f'{MAIN_URL}/api'
 REGISTER_LOGIN = f'{MAIN_API}/register-login'
 LOGIN_CONTROL = f'{MAIN_API}/login-control'
 LOGOUT = f'{MAIN_API}/logout'
+
+# Related to the notifications
+NOTIFICATION = f'{MAIN_API}/notification'
+NOTIFICATION_COUNT = f'{MAIN_API}/notification-count'
+MARK_AS_READ = f'{NOTIFICATION}/mark-as-read'
