@@ -21,7 +21,7 @@ TODO: Module documentation.
 """
 from bistro._urllib_adapters import Session
 from bistro._models import UserSubscription, User, LoginSession
-from bistro._API_endpoints import LOGIN_CONTROL
+from bistro._API_endpoints import LOGIN_CONTROL, LOGOUT
 from bistro._exceptions import AuthenticationError
 import functools
 import urllib.request
@@ -66,7 +66,6 @@ class Auth:
     Todo:
         - Implement a way to authenticate users with username and password. Since this needs captcha solving and 3rd
           party libraries it's not a priority.
-        - Implement logging out.
         - Implement registering.
         - Replace the abysmal `singledispatchmethod` with a robust implementation of true multiple dispatch.
     """
@@ -169,3 +168,29 @@ class Auth:
             created_timestamp=response['creationDate'],
             expiration_timestamp=response['validUntil']
         )
+
+    def _logout(self) -> None:
+        """Logs out the user thus closing the current login session
+
+        Raises:
+            URLOpenError: When logging out fails. This could be result of:
+                1. HTTP Error
+                2. Login session is already closed
+
+        Note:
+            - After logging out, user's access token becomes unusable and needs to be renewed.
+
+        Example:
+            >>> auth = Auth(uuid.UUID('c8ad200c-be04-4471-97f3-f7ad2c9dd230'))
+            >>> auth._logout()
+        """
+        self._logger.debug('Logging out')
+
+        self.session.open(
+            urllib.request.Request(LOGOUT,
+                                   headers={'X-Auth-Token': str(self.access_token)},
+                                   method='PUT'),
+            parse_json=False
+        )
+
+        self._logger.debug('Logged out successfully')
