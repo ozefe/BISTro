@@ -21,7 +21,62 @@ TODO: Module documentation.
 """
 import dataclasses
 import datetime
-from _exceptions import InvalidTimestampError, OverflowTimestampError
+import ipaddress
+import uuid
+from _exceptions import InvalidTimestampError, OverflowTimestampError, UUIDError, IPAddressError
+
+
+def _timestamp_to_datetime(timestamp: float, *, do_overflow: bool = True) -> datetime.datetime:
+    """Converts provided timestamp to :class:`datetime.datetime` object.
+
+    Tries to convert provided timestamp to :class:`datetime.datetime` object, raises appropriate errors if the provided
+    timestamp is invalid. :attr:`do_overflow` flag allows for returning maximum supported timestamp value (`2**31 - 1`)
+    instead of raising an error when timestamp is too big for conversion.
+
+    Arguments:
+        timestamp: UNIX timestamp for conversion
+
+    Keyword Arguments:
+        do_overflow: If set to `True`, raises an appropriate error when :attr:`timestamp` overflows. If set to `False`,
+            returns :class:`datetime.datetime` object with maximum timestamp allowed.
+
+    Returns:
+        :class:`datetime.datetime` object
+
+    Raises:
+        InvalidTimestampError: If :attr:`timestamp` is not convertible to a valid datetime.
+        OverflowTimestampError: If :attr:`timestamp` is larger than 32-bit integer.
+
+    Note:
+        - Be cautious of potential timestamp overflow issues when handling large timestamps.
+
+    See Also:
+        - :class:`datetime.datetime`
+        - :meth:`datetime.datetime.fromtimestamp`
+        - :class:`InvalidTimestampError`
+        - :class:`OverflowTimestampError`
+
+    Example:
+        Converting a UNIX timestamp to datetime:
+
+        >>> _timestamp_to_datetime(timestamp=1365152400.0)
+        datetime.datetime(2013, 4, 5, 12, 0)
+        >>> _timestamp_to_datetime(timestamp='BIST')
+        InvalidTimestampError: Invalid timestamp='BIST'
+        >>> _timestamp_to_datetime(timestamp=2**35, do_overflow=True)
+        OverflowTimestampError: Provided timestamp=34359738368 is too big for conversion to `datetime.datetime`object.
+        >>> _timestamp_to_datetime(timestamp=2**35, do_overflow=False)
+        datetime.datetime(2038, 1, 19, 6, 14, 7)
+    """
+    try:
+        return datetime.datetime.fromtimestamp(timestamp)
+    except (TypeError, ValueError) as tb:
+        raise InvalidTimestampError(f'Invalid {timestamp=}') from tb
+    except (OverflowError, OSError) as tb:
+        if do_overflow:
+            raise OverflowTimestampError(f'Provided {timestamp=} is too big for conversion to `datetime.datetime`'
+                                         'object.') from tb
+        return datetime.datetime.fromtimestamp(2**31 - 1)
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True, slots=True, weakref_slot=True)
@@ -31,7 +86,7 @@ class UserSubscription:
     This dataclass encapsulates partial data subscription details for a :class:`User`. It provides information about the
     subscription's ID, price, name, and more. For complete data, refer to the :class:`Subscription`.
 
-    Arguments:
+    Keyword Arguments:
         id: The unique identifier of the subscription.
         ref_id: The reference ID of the subscription.
         price: The subscription price in Turkish Lira (₺).
@@ -54,7 +109,7 @@ class UserSubscription:
 
     Raises:
         InvalidTimestampError: If provided timestamp is not convertible to a valid datetime.
-        OverflowTimestampError: If :attr:`created_datetime` timestamp is larger than 32-bit integer.
+        OverflowTimestampError: If :attr:`created_timestamp` is larger than 32-bit integer.
 
     Notes:
         - This class is intended to be used as an immutable data container, hence the `frozen` attribute.
@@ -105,58 +160,31 @@ class UserSubscription:
     name: str
     name_en: str
     created_timestamp: int = dataclasses.field(repr=False)
-    expiration_timestamp: int = dataclasses.field(repr=False)
     created_date_text: str = dataclasses.field(repr=False)
-    expiration_date_text: str = dataclasses.field(repr=False)
     created_datetime: datetime.datetime = dataclasses.field(init=False)
+    expiration_timestamp: int = dataclasses.field(repr=False)
+    expiration_date_text: str = dataclasses.field(repr=False)
     expiration_datetime: datetime.datetime = dataclasses.field(init=False)
 
     def __post_init__(self) -> None:
         """Initialize calculated datetime fields."""
-        # The BIST DataStore employs timestamps in milliseconds and supports subscription periods of up to 999999
-        # months, equivalent to 833 years and 10 months. It appears that they use larger integer types, probably i64,
-        # rather than the conventional signed 32-bit integer. This creates an issue because CPython and
-        # `datetime.datetime` still utilize the `localtime()` and `gmtime()`, which in turn may or may not allow bigger
-        # values than the maximum of signed 32-bit integer. Consequently, converting timestamps from BIST DataStore to
-        # `datetime.datetime` objects could lead to overflows.
-        #
-        # To address this, we perform an initial check to determine if the timestamp exceeds the range of a signed
-        # 32-bit integer. If it does, we cap it at the maximum value representable by a signed 32-bit integer: 2**31 - 1
-
         # We don't need to check for overflows for `created_timestamp` since we can assume we're dealing with
         # relatively recent dates. Although if we have an overflow here too, raising an error and halting would be
         # better.
-        try:
-            object.__setattr__(self, 'created_datetime',
-                               datetime.datetime.fromtimestamp(self.created_timestamp / 1_000.0))
-        except ValueError as tb:
-            raise InvalidTimestampError('Invalid timestamp provided.') from tb
-        except OverflowError as tb:
-            raise OverflowTimestampError('Provided timestamp is too big for conversion to `datetime.datetime`'
-                                         'object.') from tb
-        except OSError as tb:
-            raise InvalidTimestampError('Encountered an error while trying to convert provided timestamp to '
-                                        '`datetime.datetime` object.') from tb
+        object.__setattr__(self, 'created_datetime',
+                           _timestamp_to_datetime(self.created_timestamp / 1_000.0))
 
-        # Try to convert `expiration_timestamp` to `datetime.datetime` object. Failure means we overflowed, and then
-        # we can just max it out.
-        try:
-            object.__setattr__(self, 'expiration_datetime',
-                               datetime.datetime.fromtimestamp(self.expiration_timestamp / 1_000.0))
-        except (OverflowError, OSError):
-            object.__setattr__(self, 'expiration_datetime',
-                               datetime.datetime.fromtimestamp(2 ** 31 - 1))
-        except ValueError as tb:
-            raise InvalidTimestampError('Invalid timestamp provided.') from tb
+        object.__setattr__(self, 'expiration_datetime',
+                           _timestamp_to_datetime(self.expiration_timestamp / 1_000.0, do_overflow=False))
 
 
-@dataclasses.dataclass(frozen=True, slots=True, weakref_slot=True)
+@dataclasses.dataclass(frozen=True, kw_only=True, slots=True, weakref_slot=True)
 class User:
     """Represents a user object.
 
     This class encapsulates information about a user, including identification, username, and email.
 
-    Arguments:
+    Keyword Arguments:
         id: The unique identifier of the user.
         username: The username of the user.
         email: The email address associated with the user.
@@ -207,3 +235,102 @@ class User:
     state: str
     family_name: str = None
     subscriptions: list[UserSubscription] = dataclasses.field(default_factory=list)
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True, slots=True, weakref_slot=True)
+class LoginSession:
+    """Represents a login session object.
+
+    Login session objects returned whenever we check our current login status or login with user credentials.
+
+    Keyword Arguments:
+        id: The unique identifier of the login session.
+        user: Logged in :class:`User` object.
+        state: The state or status of the login session.
+        new_user: Indicates whether the user is newly registered.
+        access_token_text: UUID version 4 access token as string.
+        login_ip_text: IPv4 address as string.
+        created_timestamp: The creation timestamp in milliseconds.
+        expiration_timestamp: The expiration timestamp in milliseconds or microseconds.
+
+    Attributes:
+        access_token: :class:`uuid.UUID` object representing UUID version 4 access token.
+        login_ip: :class:`ipaddress.IPv4Address` object representing IP version 4 address that the login session was
+            initiated with.
+        created_datetime: The calculated creation date and time.
+        expiration_datetime: The calculated expiration date and time.
+
+    Raises:
+        UUIDError: If :attr:`access_token_text` is not a valid UUID version 4 token.
+        IPAddressError: If :attr:`login_ip_text` is not a valid IPv4 address.
+        InvalidTimestampError: If provided timestamp is not convertible to a valid datetime.
+        OverflowTimestampError: If :attr:`created_timestamp` is larger than 32-bit integer.
+
+    Notes:
+        - This class is intended to be used as an immutable data container, hence the `frozen` attribute.
+        - Use the `slots` attribute for optimized memory usage.
+        - The `weakref_slot` attribute enables weak references.
+
+    See Also:
+        - :class:`uuid.UUID`
+        - :class:`ipaddress.IPv4Address`
+        - :class:`UUIDError`
+        - :class:`IPAddressError`
+        - :class:`ipaddress.AddressValueError`
+        - :class:`InvalidTimestampError`
+        - :class:`OverflowTimestampError`
+
+    Example:
+        >>> user_subscription = UserSubscription(...)
+        >>> user = User(...)
+        >>> LoginSession(
+        ...     id=7659617,
+        ...     user=user,
+        ...     state='ACTIVE',
+        ...     new_user=False,
+        ...     access_token_text='c8ad200c-be04-4471-97f3-f7ad2c9dd230',
+        ...     login_ip_text='1.2.3.4',
+        ...     created_timestamp=1693580433760,
+        ...     expiration_timestamp=1696172433760
+        ... )
+        LoginSession(id=7659617,
+                     user=User(...),
+                     state='ACTIVE',
+                     new_user=False,
+                     access_token=UUID('c8ad200c-be04-4471-97f3-f7ad2c9dd230'),
+                     login_ip=IPv4Address('1.2.3.4'),
+                     created_datetime=datetime.datetime(2023, 9, 1, 18, 0, 33, 760000),
+                     expiration_datetime=datetime.datetime(2023, 10, 1, 18, 0, 33, 760000))
+
+    Todo:
+        - Provide comprehensive documentation on possible :attr:`state` values.
+    """
+    id: int
+    user: User
+    state: str
+    new_user: bool
+    access_token_text: str = dataclasses.field(repr=False)
+    access_token: uuid.UUID = dataclasses.field(init=False)
+    login_ip_text: str = dataclasses.field(repr=False)
+    login_ip: ipaddress.IPv4Address = dataclasses.field(init=False)
+    created_timestamp: int = dataclasses.field(repr=False)
+    created_datetime: datetime.datetime = dataclasses.field(init=False)
+    expiration_timestamp: int = dataclasses.field(repr=False)
+    expiration_datetime: datetime.datetime = dataclasses.field(init=False)
+
+    def __post_init__(self) -> None:
+        try:
+            object.__setattr__(self, 'access_token', uuid.UUID(self.access_token_text))
+        except ValueError as tb:
+            raise UUIDError(f'Malformed or corrupted access token: {self.access_token_text}') from tb
+
+        try:
+            object.__setattr__(self, 'login_ip', ipaddress.IPv4Address(self.login_ip_text))
+        except ipaddress.AddressValueError as tb:
+            raise IPAddressError(f'Malformed or corrupted IP address: {self.login_ip_text}') from tb
+
+        object.__setattr__(self, 'created_datetime',
+                           _timestamp_to_datetime(self.created_timestamp / 1_000.0))
+
+        object.__setattr__(self, 'expiration_datetime',
+                           _timestamp_to_datetime(self.expiration_timestamp / 1_000.0, do_overflow=False))
