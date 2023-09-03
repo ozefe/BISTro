@@ -23,7 +23,7 @@ import dataclasses
 import datetime
 import ipaddress
 import uuid
-from _exceptions import InvalidTimestampError, OverflowTimestampError, UUIDError, IPAddressError
+from bistro._exceptions import InvalidTimestampError, OverflowTimestampError, UUIDError, IPAddressError
 
 
 def _timestamp_to_datetime(timestamp: float, *, do_overflow: bool = True) -> datetime.datetime:
