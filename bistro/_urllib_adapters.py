@@ -184,6 +184,10 @@ class Session:
                 if response.code != 200:
                     raise URLOpenError(f'Encountered unexpected HTTP status code {response.code} ({response.reason}) '
                                        f'while trying to open {request.get_full_url()}', exc_info=False)
+            case 'PUT':
+                if response.code != 204:
+                    raise URLOpenError(f'Encountered unexpected HTTP status code {response.code} ({response.reason}) '
+                                       f'while trying to open {request.get_full_url()}', exc_info=False)
             case request_method:
                 raise URLOpenError(f'{request_method} is not supported', exc_info=False)
 
