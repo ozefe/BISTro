@@ -81,3 +81,7 @@ class UUIDError(BISTroBaseException):
 
 class IPAddressError(BISTroBaseException):
     """Errors related to crafting :class:`ipaddress.IPv4Address` objects"""
+
+
+class AuthenticationError(BISTroBaseException):
+    """Errors related to authenticating using user's credentials"""
