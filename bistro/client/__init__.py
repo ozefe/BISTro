@@ -19,3 +19,21 @@
 
 TODO: Module documentation.
 """
+from bistro.client._auth import Auth
+import logging
+
+_logger = logging.getLogger(f'BISTro.{__name__}')
+
+
+class Client(Auth):
+    """Represents main BISTro client
+
+    Instead of defining every class and function in here, we're defining them in their own modules for easier
+    maintenance and increased readability.
+
+    See Also:
+        - :class:`Auth`
+
+    Todo:
+        - Implement other BIST DataStore API calls.
+    """
