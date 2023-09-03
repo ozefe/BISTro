@@ -73,3 +73,11 @@ class UTFDecodeError(BISTroBaseException):
 
 class JSONDeserializationError(BISTroBaseException):
     """Errors related to JSON deserialization"""
+
+
+class UUIDError(BISTroBaseException):
+    """Badly formed hexadecimal UUID string"""
+
+
+class IPAddressError(BISTroBaseException):
+    """Errors related to crafting :class:`ipaddress.IPv4Address` objects"""
