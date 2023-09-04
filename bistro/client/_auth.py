@@ -36,7 +36,7 @@ class Auth:
 
     Provides methods for user authentication using either a username and password pair or an access token.
 
-    Args:
+    Arguments:
         username: The user's username.
         password: The user's password.
         access_token: The user's access token.
@@ -49,11 +49,11 @@ class Auth:
     See Also:
         - :class:`AuthenticationError`
 
-    Examples:
-        Authenticating with user access token:
+    Example:
+        Authenticating with user access token and then logging out:
 
         >>> auth = Auth(uuid.UUID('c8ad200c-be04-4471-97f3-f7ad2c9dd230'))
-        >>> auth._login_control()
+        >>> auth.login_control()
         LoginSession(id=7659617,
                      user=User(...),
                      state='ACTIVE',
@@ -62,6 +62,7 @@ class Auth:
                      login_ip=IPv4Address('1.2.3.4'),
                      created_datetime=datetime.datetime(2023, 9, 1, 18, 0, 33, 760000),
                      expiration_datetime=datetime.datetime(2023, 10, 1, 18, 0, 33, 760000))
+        >>> auth.logout()
 
     Todo:
         - Implement a way to authenticate users with username and password. Since this needs captcha solving and 3rd
@@ -92,7 +93,7 @@ class Auth:
 
         self._logger.debug('`Auth` object has been initialized')
 
-    def _login_control(self) -> LoginSession:
+    def login_control(self) -> LoginSession:
         """Checks current login session
 
         Gets information about the current login session using user's access token and returns it.
@@ -108,11 +109,11 @@ class Auth:
             - :class:`User`
             - :class:`LoginSession`
 
-        Examples:
+        Example:
         Authenticating with user access token:
 
         >>> auth = Auth(uuid.UUID('c8ad200c-be04-4471-97f3-f7ad2c9dd230'))
-        >>> auth._login_control()
+        >>> auth.login_control()
         LoginSession(id=7659617,
                      user=User(...),
                      state='ACTIVE',
@@ -125,7 +126,7 @@ class Auth:
         Todo:
             - Better error handling is needed.
         """
-        self._logger.debug('Checking login session...')
+        self._logger.debug('Checking login session')
 
         response = self.session.open(urllib.request.Request(LOGIN_CONTROL,
                                                             headers={'X-Auth-Token': str(self.access_token)}))
@@ -169,7 +170,7 @@ class Auth:
             expiration_timestamp=response['validUntil']
         )
 
-    def _logout(self) -> None:
+    def logout(self) -> None:
         """Logs out the user thus closing the current login session
 
         Raises:
@@ -182,7 +183,7 @@ class Auth:
 
         Example:
             >>> auth = Auth(uuid.UUID('c8ad200c-be04-4471-97f3-f7ad2c9dd230'))
-            >>> auth._logout()
+            >>> auth.logout()
         """
         self._logger.debug('Logging out')
 

@@ -415,7 +415,7 @@ class NotificationPage:
     Example:
         >>> NotificationPage(
         ...     index=1,
-        ...     items_count=10,
+        ...     items_count=2,
         ...     notifications= [
         ...         Notification(
         ...             id=7664950,
